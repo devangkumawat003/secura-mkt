@@ -1,25 +1,14 @@
 // Vercel serverless function: commits the edited page to GitHub (index.html on main).
-// Env vars (set in Vercel): GITHUB_TOKEN, EDIT_PASSWORD, GITHUB_REPO (owner/name), optional GITHUB_BRANCH (default main).
-const crypto = require('crypto');
-
-function same(a, b) {
-  const x = crypto.createHash('sha256').update(String(a)).digest();
-  const y = crypto.createHash('sha256').update(String(b)).digest();
-  return crypto.timingSafeEqual(x, y);
-}
+// Env vars (set in Vercel): GITHUB_TOKEN, GITHUB_REPO (owner/name), optional GITHUB_BRANCH (default main).
 function fail(res, status, code, error) { return res.status(status).json({ code, error }); }
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return fail(res, 405, 'method', 'POST only');
-  const { GITHUB_TOKEN, EDIT_PASSWORD, GITHUB_REPO } = process.env;
+  const { GITHUB_TOKEN, GITHUB_REPO } = process.env;
   const branch = process.env.GITHUB_BRANCH || 'main';
-  if (!GITHUB_TOKEN || !EDIT_PASSWORD || !GITHUB_REPO) return fail(res, 500, 'not_configured', 'Server env vars are missing');
+  if (!GITHUB_TOKEN || !GITHUB_REPO) return fail(res, 500, 'not_configured', 'Server env vars are missing');
 
   const body = req.body || {};
-  if (!same(body.password || '', EDIT_PASSWORD)) {
-    await new Promise(r => setTimeout(r, 800));
-    return fail(res, 401, 'bad_password', 'Wrong password');
-  }
   const html = body.html;
   if (typeof html !== 'string' || !/^<!doctype html/i.test(html) || !html.includes('id="state"') || html.length > 2000000)
     return fail(res, 400, 'invalid_content', 'Not a valid page');

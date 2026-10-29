@@ -464,7 +464,6 @@ body.editing .ibtn.ctl-edit{display:inline-grid}
   var VIEW = viewFromHash();
   var DRAG = null, IND = null, POP = null, CAL = null;
   var STANDALONE = !(window.claude && typeof window.claude.use === 'function');
-  var PW_KEY = 'secura-edit-pw';
   var RICH_KEYS = { desc: 1, d: 1, objective: 1, why: 1 };
   var RICH_PATHS = { 'intro.lede': 1, 'hero.audText': 1, 'xsec.intro': 1 };
 
@@ -1346,8 +1345,6 @@ body.editing .ibtn.ctl-edit{display:inline-grid}
         bar('info', 'You can view this page but not edit it. Ask the owner for edit access.');
         return;
       }
-      if (code === 'bad_password'){ bar('edit', 'Wrong edit password. Press Save to try again.'); return; }
-      if (code === 'cancelled'){ bar('edit', 'Save cancelled. Your edits are still here.'); return; }
       if (code === 'not_configured'){ bar('edit', 'The server is not set up for saving yet (missing environment variables).'); return; }
       if (code === 'github_read' || code === 'github_write'){ bar('edit', 'GitHub rejected the save. Check the token and its permissions.'); return; }
       if (code === 'rate_limited'){ bar('edit', 'Too many saves in a short time. Wait a minute, then save again.'); return; }
@@ -1362,13 +1359,9 @@ body.editing .ibtn.ctl-edit{display:inline-grid}
   if (STANDALONE){
     /* Hosted outside Claude: Save posts to /api/save, which commits index.html to GitHub. */
     ART = { publish: function(html){
-      var pw = null; try { pw = sessionStorage.getItem(PW_KEY); } catch(e){}
-      if (!pw) pw = window.prompt('Edit password');
-      if (!pw){ var c = new Error('cancelled'); c.code = 'cancelled'; return Promise.reject(c); }
-      return fetch('/api/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw, html: html }) })
+      return fetch('/api/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ html: html }) })
         .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){
-          if (!r.ok){ if (r.status === 401){ try { sessionStorage.removeItem(PW_KEY); } catch(e){} } var er = new Error(j.error || 'save failed'); er.code = j.code || 'error'; throw er; }
-          try { sessionStorage.setItem(PW_KEY, pw); } catch(e){}
+          if (!r.ok){ var er = new Error(j.error || 'save failed'); er.code = j.code || 'error'; throw er; }
           return j;
         }); });
     } };
